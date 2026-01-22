@@ -20,30 +20,60 @@
     <div class="grid" id="file-list"></div>
 
 <script>
-        // config.js에서 설정값 가져오기
-        const { url, key, bucket } = window.SupabaseConfig;
-        
-        // [수정 1] 변수 이름을 'supabase' -> 'client'로 변경해서 충돌 방지
-        const client = window.supabase.createClient(url, key);
+        console.log("👉 1. 스크립트가 시작되었습니다.");
 
-        // 현재 페이지 주소 기반으로 viewer 주소 만들기
+        // 1. Config 파일 로드 확인
+        if (!window.SupabaseConfig) {
+            console.error("❌ config.js 파일이 로드되지 않았습니다. 파일 위치를 확인해주세요!");
+            alert("설정(config.js)을 불러오지 못했습니다.");
+        } else {
+            console.log("👉 2. 설정값을 성공적으로 불러왔습니다:", window.SupabaseConfig);
+        }
+
+        const { url, key, bucket } = window.SupabaseConfig;
+
+        // 2. Supabase 클라이언트 생성 확인
+        let client;
+        try {
+            client = window.supabase.createClient(url, key);
+            console.log("👉 3. Supabase 클라이언트 생성 완료");
+        } catch (err) {
+            console.error("❌ Supabase 클라이언트 생성 실패:", err);
+        }
+
         const BASE_URL = window.location.href.replace('index.html', 'viewer.html').split('?')[0];
 
         async function loadFiles() {
-            // [수정 2] 여기서도 'client'를 사용해야 함
+            console.log(`👉 4. '${bucket}' 버킷에서 파일 목록을 요청합니다...`);
+            
+            // 3. 데이터 요청 확인
             const { data, error } = await client.storage.from(bucket).list();
 
             if (error) {
-                console.error('에러 상세 내용:', error); // 에러 확인용 로그 추가
-                alert('파일을 불러오는데 실패했습니다. 콘솔을 확인해주세요.');
+                console.error("❌ Supabase 에러 발생:", error);
+                alert(`데이터를 가져오는데 실패했습니다.\n에러: ${error.message}`);
+                return;
+            }
+
+            console.log("👉 5. 받아온 파일 데이터:", data);
+
+            if (!data || data.length === 0) {
+                console.warn("⚠️ 파일 목록이 비어있습니다. 버킷에 파일이 있는지 확인해주세요.");
+                alert("버킷에 파일이 없습니다.");
+                document.getElementById('loading').innerText = "파일이 없습니다.";
                 return;
             }
 
             document.getElementById('loading').style.display = 'none';
             const container = document.getElementById('file-list');
 
+            let count = 0;
             for (const file of data) {
+                // .emptyFolderPlaceholder 같은 시스템 파일은 무시
                 if (file.name.startsWith('.')) continue;
+
+                console.log(`👉 파일 처리 중: ${file.name}`);
+                count++;
 
                 const viewerUrl = `${BASE_URL}?file=${encodeURIComponent(file.name)}`;
                 const qrUrl = await QRCode.toDataURL(viewerUrl);
@@ -58,6 +88,7 @@
                 `;
                 container.appendChild(card);
             }
+            console.log(`👉 총 ${count}개의 파일 QR 생성 완료`);
         }
         loadFiles();
     </script>
