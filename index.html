@@ -19,21 +19,23 @@
     <div id="loading">로딩 중...</div>
     <div class="grid" id="file-list"></div>
 
-    <script>
+<script>
         // config.js에서 설정값 가져오기
         const { url, key, bucket } = window.SupabaseConfig;
-        const supabase = window.supabase.createClient(url, key);
+        
+        // [수정 1] 변수 이름을 'supabase' -> 'client'로 변경해서 충돌 방지
+        const client = window.supabase.createClient(url, key);
 
         // 현재 페이지 주소 기반으로 viewer 주소 만들기
-        // (예: https://mysite.com/index.html -> https://mysite.com/viewer.html)
         const BASE_URL = window.location.href.replace('index.html', 'viewer.html').split('?')[0];
 
         async function loadFiles() {
-            const { data, error } = await supabase.storage.from(bucket).list();
+            // [수정 2] 여기서도 'client'를 사용해야 함
+            const { data, error } = await client.storage.from(bucket).list();
 
             if (error) {
-                console.error(error);
-                alert('파일을 불러오는데 실패했습니다.');
+                console.error('에러 상세 내용:', error); // 에러 확인용 로그 추가
+                alert('파일을 불러오는데 실패했습니다. 콘솔을 확인해주세요.');
                 return;
             }
 
