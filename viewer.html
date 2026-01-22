@@ -7,41 +7,124 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <script src="config.js"></script>
     <style>
-        body, html { margin: 0; height: 100%; overflow: hidden; background: #eee; }
+        body, html { margin: 0; height: 100%; overflow: hidden; background: #333; font-family: sans-serif; }
+        
+        /* 뷰어 스타일 */
         model-viewer { width: 100%; height: 100%; }
+
+        /* 버튼들이 들어갈 하단 바 스타일 */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            overflow-x: auto; /* 버튼이 많으면 가로 스크롤 */
+            max-width: 90%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5); /* 반투명 검은 배경 */
+            border-radius: 20px;
+            z-index: 100;
+        }
+
+        /* 개별 버튼 스타일 */
+        .anim-btn {
+            background: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap; /* 글자 줄바꿈 방지 */
+            transition: 0.2s;
+        }
+
+        /* 선택된 버튼 스타일 */
+        .anim-btn.active {
+            background: #4CAF50; /* 초록색 */
+            color: white;
+            font-weight: bold;
+        }
+
+        /* 스크롤바 숨기기 (깔끔하게) */
+        .controls::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
+
     <model-viewer 
         id="viewer"
         src="" 
-        
         autoplay 
-        animation-name="*"
-        
         environment-image="neutral" 
         tone-mapping="commerce"
         exposure="1"
         shadow-intensity="1"
-        
         ar 
-        ar-modes="webxr scene-viewer quick-look" 
-        camera-controls>
+        camera-controls 
+        touch-action="pan-y">
     </model-viewer>
+
+    <div class="controls" id="anim-controls" style="display: none;"></div>
 
     <script>
         const { url, bucket } = window.SupabaseConfig;
+        const viewer = document.getElementById('viewer');
+        const controls = document.getElementById('anim-controls');
 
+        // 1. URL에서 파일명 가져오기
         const params = new URLSearchParams(window.location.search);
         const fileName = params.get('file');
 
         if (fileName) {
-            // Supabase 공개 URL 조합
             const publicUrl = `${url}/storage/v1/object/public/${bucket}/${fileName}`;
-            document.getElementById('viewer').src = publicUrl;
+            viewer.src = publicUrl;
         } else {
             alert('잘못된 접근입니다.');
         }
+
+        // 2. 모델 로딩이 끝나면 애니메이션 목록 확인하기
+        viewer.addEventListener('load', () => {
+            const animations = viewer.availableAnimations;
+            console.log("발견된 애니메이션:", animations);
+
+            // 애니메이션이 하나도 없으면 버튼 바를 숨김
+            if (animations.length === 0) {
+                controls.style.display = 'none';
+                return;
+            }
+
+            // 애니메이션이 있으면 버튼 생성 시작
+            controls.style.display = 'flex';
+            controls.innerHTML = ''; // 기존 버튼 초기화
+
+            // 기본적으로 첫 번째 애니메이션 실행
+            viewer.animationName = animations[0];
+
+            animations.forEach((animName, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'anim-btn';
+                btn.innerText = animName; // 버튼 이름 = 애니메이션 이름
+                
+                // 첫 번째 버튼은 활성화 상태로 시작
+                if (index === 0) btn.classList.add('active');
+
+                // 버튼 클릭 시 동작
+                btn.onclick = () => {
+                    // 1. 뷰어의 애니메이션 변경
+                    viewer.animationName = animName; 
+                    
+                    // 2. 모든 버튼의 색깔 끄기
+                    document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+                    
+                    // 3. 클릭한 버튼만 색깔 켜기
+                    btn.classList.add('active');
+                };
+
+                controls.appendChild(btn);
+            });
+        });
     </script>
 </body>
 </html>
