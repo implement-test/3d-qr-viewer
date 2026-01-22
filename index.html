@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 모델 QR 목록</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="config.js"></script> 
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; text-align: center; }
+        img { width: 150px; height: 150px; }
+    </style>
+</head>
+<body>
+    <h1>Supabase 모델 목록</h1>
+    <div id="loading">로딩 중...</div>
+    <div class="grid" id="file-list"></div>
+
+    <script>
+        // config.js에서 설정값 가져오기
+        const { url, key, bucket } = window.SupabaseConfig;
+        const supabase = window.supabase.createClient(url, key);
+
+        // 현재 페이지 주소 기반으로 viewer 주소 만들기
+        // (예: https://mysite.com/index.html -> https://mysite.com/viewer.html)
+        const BASE_URL = window.location.href.replace('index.html', 'viewer.html').split('?')[0];
+
+        async function loadFiles() {
+            const { data, error } = await supabase.storage.from(bucket).list();
+
+            if (error) {
+                console.error(error);
+                alert('파일을 불러오는데 실패했습니다.');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            const container = document.getElementById('file-list');
+
+            for (const file of data) {
+                if (file.name.startsWith('.')) continue;
+
+                const viewerUrl = `${BASE_URL}?file=${encodeURIComponent(file.name)}`;
+                const qrUrl = await QRCode.toDataURL(viewerUrl);
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>${file.name}</h3>
+                    <img src="${qrUrl}" alt="QR">
+                    <br>
+                    <a href="${viewerUrl}" target="_blank">뷰어 확인</a>
+                `;
+                container.appendChild(card);
+            }
+        }
+        loadFiles();
+    </script>
+</body>
+</html>
