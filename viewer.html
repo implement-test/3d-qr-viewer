@@ -84,4 +84,91 @@
             transition: transform 0.2s;
         }
 
-        #
+        #ar-button:active {
+            transform: scale(0.95); /* 눌렀을 때 살짝 작아짐 */
+        }
+
+        /* AR 미지원 기기에서는 버튼 숨김 */
+        model-viewer:not([ar-status="session-started"]) > #ar-button {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+<model-viewer
+        id="viewer"
+        src=""
+        ios-src=""
+        autoplay
+        environment-image="neutral"
+        tone-mapping="commerce"
+        exposure="1"
+        shadow-intensity="1"
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="auto"
+        camera-controls
+        touch-action="none"
+        interpolation-decay="200"
+        disable-tap
+        min-camera-orbit="auto auto 5%"
+        max-camera-orbit="auto auto 150%">
+
+    <button slot="ar-button" id="ar-button">
+        <img src="https://modelviewer.dev/shared-assets/icons/ic_view_in_ar_new_googblue_48dp.png" width="24" height="24" alt="AR Icon">
+        AR 카메라로 보기
+    </button>
+
+</model-viewer>
+
+<div class="controls" id="anim-controls" style="display: none;"></div>
+
+<script>
+    const { url, bucket } = window.SupabaseConfig;
+    const viewer = document.getElementById('viewer');
+    const controls = document.getElementById('anim-controls');
+
+    const params = new URLSearchParams(window.location.search);
+    const fileName = params.get('file');
+
+    if (fileName) {
+        // 1. 기본 파일 (.glb)
+        const publicUrl = `${url}/storage/v1/object/public/${bucket}/${fileName}`;
+        viewer.src = publicUrl;
+
+        // 2. 아이폰용 파일 (.usdz) 자동 매핑
+        const usdzName = fileName.replace('.glb', '.usdz').replace('.gltf', '.usdz');
+        const iosUrl = `${url}/storage/v1/object/public/${bucket}/${usdzName}`;
+        viewer.setAttribute('ios-src', iosUrl);
+    } else {
+        alert('잘못된 접근입니다.');
+    }
+
+    viewer.addEventListener('load', () => {
+        const animations = viewer.availableAnimations;
+        if (animations.length === 0) {
+            controls.style.display = 'none';
+            return;
+        }
+
+        controls.style.display = 'flex';
+        controls.innerHTML = '';
+        viewer.animationName = animations[0];
+
+        animations.forEach((animName, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'anim-btn';
+            btn.innerText = animName;
+            if (index === 0) btn.classList.add('active');
+            btn.onclick = () => {
+                viewer.animationName = animName;
+                document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+            controls.appendChild(btn);
+        });
+    });
+</script>
+</body>
+</html>
