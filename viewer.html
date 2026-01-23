@@ -7,27 +7,22 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <script src="config.js"></script>
     <style>
-        /* 페이지 스크롤 및 튀는 현상 방지 */
-        body, html { 
-            margin: 0; 
-            height: 100%; 
-            overflow: hidden; 
-            background: #333; 
-            font-family: sans-serif;
-            touch-action: none; /* 브라우저 기본 터치 동작 차단 */
-        }
-        
-        model-viewer { 
-            width: 100%; 
-            height: 100%;
-            /* 뷰어 내부에서도 터치 충돌 방지 */
-            touch-action: none; 
-            outline: none;
+        /* 기본 설정 및 터치 방지 */
+        body, html {
+            margin: 0; height: 100%; overflow: hidden;
+            background: #333; font-family: sans-serif;
+            touch-action: none;
         }
 
+        model-viewer {
+            width: 100%; height: 100%;
+            touch-action: none; outline: none;
+        }
+
+        /* [수정 1] 버튼 위치를 하단(bottom)에서 상단(top)으로 변경 */
         .controls {
             position: absolute;
-            bottom: 30px; /* 위치를 조금 더 올림 */
+            top: 20px; /* 위에서 20px 떨어짐 */
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -38,14 +33,13 @@
             background: rgba(0, 0, 0, 0.6);
             border-radius: 20px;
             z-index: 100;
-            /* 버튼 쪽에서는 스크롤이 가능해야 하므로 auto로 설정 */
-            touch-action: pan-x; 
+            touch-action: pan-x;
         }
 
         .anim-btn {
             background: rgba(255, 255, 255, 0.9);
             border: none;
-            padding: 10px 20px; /* 버튼 크기 키움 (터치하기 편하게) */
+            padding: 10px 20px;
             border-radius: 15px;
             font-size: 15px;
             cursor: pointer;
@@ -60,74 +54,80 @@
             font-weight: bold;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-
         .controls::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-    <model-viewer 
+<model-viewer
         id="viewer"
-        src="" 
-        autoplay 
-        environment-image="neutral" 
+        src=""
+        ios-src=""
+        autoplay
+        environment-image="neutral"
         tone-mapping="commerce"
         exposure="1"
         shadow-intensity="1"
-        ar 
-        camera-controls 
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="auto"
+        camera-controls
         touch-action="none"
         interpolation-decay="200"
         disable-tap
         min-camera-orbit="auto auto 5%"
         max-camera-orbit="auto auto 150%">
-    </model-viewer>
+</model-viewer>
 
-    <div class="controls" id="anim-controls" style="display: none;"></div>
+<div class="controls" id="anim-controls" style="display: none;"></div>
 
-    <script>
-        const { url, bucket } = window.SupabaseConfig;
-        const viewer = document.getElementById('viewer');
-        const controls = document.getElementById('anim-controls');
+<script>
+    const { url, bucket } = window.SupabaseConfig;
+    const viewer = document.getElementById('viewer');
+    const controls = document.getElementById('anim-controls');
 
-        const params = new URLSearchParams(window.location.search);
-        const fileName = params.get('file');
+    const params = new URLSearchParams(window.location.search);
+    const fileName = params.get('file');
 
-        if (fileName) {
-            const publicUrl = `${url}/storage/v1/object/public/${bucket}/${fileName}`;
-            viewer.src = publicUrl;
-        } else {
-            alert('잘못된 접근입니다.');
+    if (fileName) {
+        // 1. 안드로이드/웹용 파일 (.glb)
+        const publicUrl = `${url}/storage/v1/object/public/${bucket}/${fileName}`;
+        viewer.src = publicUrl;
+
+        // 2. [수정 2] 아이폰용 파일 (.usdz) 경로 자동 생성
+        // 파일명이 butterfly.glb 라면 -> butterfly.usdz 파일을 찾도록 설정
+        const usdzName = fileName.replace('.glb', '.usdz').replace('.gltf', '.usdz');
+        const iosUrl = `${url}/storage/v1/object/public/${bucket}/${usdzName}`;
+        viewer.setAttribute('ios-src', iosUrl);
+
+    } else {
+        alert('잘못된 접근입니다.');
+    }
+
+    viewer.addEventListener('load', () => {
+        const animations = viewer.availableAnimations;
+        if (animations.length === 0) {
+            controls.style.display = 'none';
+            return;
         }
 
-        viewer.addEventListener('load', () => {
-            const animations = viewer.availableAnimations;
-            
-            if (animations.length === 0) {
-                controls.style.display = 'none';
-                return;
-            }
+        controls.style.display = 'flex';
+        controls.innerHTML = '';
+        viewer.animationName = animations[0];
 
-            controls.style.display = 'flex';
-            controls.innerHTML = '';
-
-            viewer.animationName = animations[0];
-
-            animations.forEach((animName, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'anim-btn';
-                btn.innerText = animName;
-                
-                if (index === 0) btn.classList.add('active');
-
-                btn.onclick = () => {
-                    viewer.animationName = animName; 
-                    document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                };
-                controls.appendChild(btn);
-            });
+        animations.forEach((animName, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'anim-btn';
+            btn.innerText = animName;
+            if (index === 0) btn.classList.add('active');
+            btn.onclick = () => {
+                viewer.animationName = animName;
+                document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+            controls.appendChild(btn);
         });
-    </script>
+    });
+</script>
 </body>
 </html>
