@@ -7,30 +7,33 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <script src="config.js"></script>
     <style>
-        /* 기본 설정 및 터치 방지 */
+        /* 기본 설정 */
         body, html {
             margin: 0; height: 100%; overflow: hidden;
-            background: #333; font-family: sans-serif;
+            background: #333; font-family: 'Pretendard', sans-serif; /* 폰트 깔끔하게 */
             touch-action: none;
         }
 
         model-viewer {
             width: 100%; height: 100%;
             touch-action: none; outline: none;
+            --poster-color: transparent; /* 로딩 깜빡임 제거 */
         }
 
-        /* [수정 1] 버튼 위치를 하단(bottom)에서 상단(top)으로 변경 */
+        /* [애니메이션 버튼] 상단 배치 */
         .controls {
             position: absolute;
-            top: 20px; /* 위에서 20px 떨어짐 */
+            top: 20px;
+            top: env(safe-area-inset-top, 20px); /* 노치 대응 */
+            bottom: auto !important;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 10px;
+            gap: 8px;
             overflow-x: auto;
             max-width: 90%;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5); /* 배경 조금 더 투명하게 */
             border-radius: 20px;
             z-index: 100;
             touch-action: pan-x;
@@ -39,95 +42,46 @@
         .anim-btn {
             background: rgba(255, 255, 255, 0.9);
             border: none;
-            padding: 10px 20px;
-            border-radius: 15px;
-            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 14px;
             cursor: pointer;
             white-space: nowrap;
             transition: 0.2s;
-            font-weight: 500;
+            font-weight: 600;
+            color: #333;
         }
 
         .anim-btn.active {
             background: #4CAF50;
             color: white;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
+
         .controls::-webkit-scrollbar { display: none; }
-    </style>
-</head>
-<body>
 
-<model-viewer
-        id="viewer"
-        src=""
-        ios-src=""
-        autoplay
-        environment-image="neutral"
-        tone-mapping="commerce"
-        exposure="1"
-        shadow-intensity="1"
-        ar
-        ar-modes="webxr scene-viewer quick-look"
-        ar-scale="auto"
-        camera-controls
-        touch-action="none"
-        interpolation-decay="200"
-        disable-tap
-        min-camera-orbit="auto auto 5%"
-        max-camera-orbit="auto auto 150%">
-</model-viewer>
+        /* [NEW] 커스텀 AR 버튼 스타일 */
+        #ar-button {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            /* 아이콘 + 글자 정렬 */
+            display: flex;
+            align-items: center;
+            gap: 8px;
 
-<div class="controls" id="anim-controls" style="display: none;"></div>
+            background-color: white;
+            border-radius: 24px;
+            border: none;
+            padding: 10px 20px 10px 16px; /* 왼쪽 여백 살짝 줄임 (아이콘 때문) */
 
-<script>
-    const { url, bucket } = window.SupabaseConfig;
-    const viewer = document.getElementById('viewer');
-    const controls = document.getElementById('anim-controls');
-
-    const params = new URLSearchParams(window.location.search);
-    const fileName = params.get('file');
-
-    if (fileName) {
-        // 1. 안드로이드/웹용 파일 (.glb)
-        const publicUrl = `${url}/storage/v1/object/public/${bucket}/${fileName}`;
-        viewer.src = publicUrl;
-
-        // 2. [수정 2] 아이폰용 파일 (.usdz) 경로 자동 생성
-        // 파일명이 butterfly.glb 라면 -> butterfly.usdz 파일을 찾도록 설정
-        const usdzName = fileName.replace('.glb', '.usdz').replace('.gltf', '.usdz');
-        const iosUrl = `${url}/storage/v1/object/public/${bucket}/${usdzName}`;
-        viewer.setAttribute('ios-src', iosUrl);
-
-    } else {
-        alert('잘못된 접근입니다.');
-    }
-
-    viewer.addEventListener('load', () => {
-        const animations = viewer.availableAnimations;
-        if (animations.length === 0) {
-            controls.style.display = 'none';
-            return;
+            font-size: 15px;
+            font-weight: bold;
+            color: #4285f4; /* 구글 AR 블루 컬러 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 100;
+            transition: transform 0.2s;
         }
 
-        controls.style.display = 'flex';
-        controls.innerHTML = '';
-        viewer.animationName = animations[0];
-
-        animations.forEach((animName, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'anim-btn';
-            btn.innerText = animName;
-            if (index === 0) btn.classList.add('active');
-            btn.onclick = () => {
-                viewer.animationName = animName;
-                document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            };
-            controls.appendChild(btn);
-        });
-    });
-</script>
-</body>
-</html>
+        #
